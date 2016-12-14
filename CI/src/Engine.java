@@ -14,10 +14,10 @@ public class Engine {
 	private static final String TEST_URL = "src/cwk_test.csv";
 	
 	// Parameters for Evolutionary Algorithm
-	private static final int GENERATIONS = 10000;
+	private static final int GENERATIONS = 1000;
 	private static final int POPULATION = 1000;
-	private static final int SUB_POPULATION = 50;
-	private static final int CROSSOVER_METHOD = 1;
+	private static final int SUB_POPULATION = (int) (POPULATION * 0.05);
+	private static final int CROSSOVER_METHOD = 2;
 	private static final double MUTATION_PROBABILITY = 0.6;
 	private static final int SUBPOP_INTERVAL = (int) (POPULATION * 0.20);
 	
@@ -47,10 +47,10 @@ public class Engine {
 			}
 			System.out.println(best.getEvaluation() + " :-:                                       OVERALL-BEST: "+overallBest.getEvaluation());
 			ArrayList<Solution> subPop = getSubPopulation(population,SUB_POPULATION);
-			subPop.add(best);
 
 			ArrayList<Solution> winners = getWinners(subPop);
 			ArrayList<Solution> newPopulation = newPopulation(winners);
+			newPopulation.add(best);
 			ArrayList<Solution> mutated = mutatePopulation(newPopulation);
 			population.clear();
 			population = (ArrayList<Solution>) mutated.clone();
@@ -58,6 +58,7 @@ public class Engine {
 		
 		System.out.println("\n *************************** \n"
 				+ "Best at end: " + overallBest + "\n *************************** \n");
+		
 		
 		
 		
