@@ -14,11 +14,12 @@ public class Engine {
 	private static final String TEST_URL = "src/cwk_test.csv";
 	
 	// Parameters for Evolutionary Algorithm
-	private static final int GENERATIONS = 1000;
+	private boolean ELITISM = false;
+	private static final int GENERATIONS = 100;
 	private static final int POPULATION = 1000;
 	private static final int SUB_POPULATION = (int) (POPULATION * 0.05);
-	private static final int CROSSOVER_METHOD = 1;
-	private static final double MUTATION_PROBABILITY = 0.6;
+	private static final int CROSSOVER_METHOD = 2;
+	private static final double MUTATION_PROBABILITY = 0.3;
 	private static final int SUBPOP_INTERVAL = (int) (POPULATION * 0.20);
 	
 	// ArrayLists to store population and data.
@@ -31,12 +32,14 @@ public class Engine {
 	
 	private Solution overallBest = null;
 	
+	private int duplicateIteration = 0;
+	
 	/**
 	 * 
 	 */
 	public Engine(){
 		dataSet = popDataTable(TRAIN_URL);
-		testSet = popTestSet();
+		testSet = popDataTable(TEST_URL);
 		population = initialisation(13);		
 		
 		for(int i = 0; i<GENERATIONS; i++){
@@ -45,25 +48,47 @@ public class Engine {
 			if(overallBest == null || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
 				overallBest = best.clone();
 			}
-			System.out.println(best.getEvaluation() + " :-:                                       OVERALL-BEST: "+overallBest.getEvaluation());
+			
+			if(bestIsSame(best, overallBest)){
+				duplicateIteration++;
+			}
+			else{
+				duplicateIteration = 0;
+			}
+			System.out.println(best.getEvaluation() + " :-:  \n "
+					+ "OVERALL-BEST: "+overallBest.getEvaluation() + "\n"
+							+ ELITISM +" \n"
+									+ duplicateIteration
+							+ "************");
+			
 			ArrayList<Solution> subPop = getSubPopulation(population,SUB_POPULATION);
-
 			ArrayList<Solution> winners = getWinners(subPop);
 			ArrayList<Solution> newPopulation = newPopulation(winners);
-			newPopulation.add(best);
 			ArrayList<Solution> mutated = mutatePopulation(newPopulation);
+			//mutated.add(best);
+	
+			
 			population.clear();
 			population = (ArrayList<Solution>) mutated.clone();
+			
+			if(i == GENERATIONS/2){;
+				ELITISM = true;
+			}
 		}
 		
 		System.out.println("\n *************************** \n"
 				+ "Best at end: " + overallBest + "\n *************************** \n");
 		
+		System.out.println("--------------------------- \n"
+				+ " Applying "+ overallBest + " to test data: \n");
 		
 		
 		
 		
-		
+	}
+	
+	public boolean bestIsSame(Solution one, Solution two){
+		return one.getEvaluation() == two.getEvaluation();
 	}
 	
 	public ArrayList<Solution> newPopulation(ArrayList<Solution> winners){
@@ -99,6 +124,7 @@ public class Engine {
 		}
 		return subPopulation;
 	}
+	
 	/**
 	 * 
 	 * @param solutions
@@ -189,11 +215,11 @@ public class Engine {
 
 				for(int i = 0; i<solutions.size(); i++){
 					Double distanceAway = 0.0;
-					for(int j = 0; j<testSet.size(); j++){
+					for(int j = 0; j<dataSet.size(); j++){
 						Double evaluated = evaluator.evaluate(listToString(
 								applyDataToFunction(
-								testSet.get(j),solutions.get(i))));
-						Double expected = testSet.get(j).getExpected();
+								dataSet.get(j),solutions.get(i))));
+						Double expected = dataSet.get(j).getExpected();
 						Double extra = expected - evaluated;
 						distanceAway += extra;
 						//System.out.println(expected+" :: "+evaluated+" :: " +extra+" :: "+listToString(applyDataToFunction(testSet.get(j),functions.get(i))));
