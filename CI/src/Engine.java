@@ -9,24 +9,90 @@ import com.fathzer.soft.javaluator.DoubleEvaluator;
 
 public class Engine {
 	
+	// Variables to store URLs for files to pass in.
 	private static final String TRAIN_URL = "src/cwk_train.csv";
-	private static final int STARTING_POP = 10;
-	private static final int CROSSOVER_METHOD = 3;
 	
-	private static final double MUTATION_PROBABILITY = 1.0;
+	// Parameters for Evolutionary Algorithm
+	private static final int GENERATIONS = 1000;
+	private static final int STARTING_POP = 10000;
+	private static final int SUB_POPULATION = 500;
+	private static final int CROSSOVER_METHOD = 2;
+	private static final double MUTATION_PROBABILITY = 0.3;
+	private static final int SUBPOP_INTERVAL = 1000;
+	
+	// ArrayLists to store population and data.
 	private ArrayList<Row> dataSet = new ArrayList<Row>();
 	private ArrayList<Row> testSet = new ArrayList<Row>();
-	private ArrayList<Solution> current = new ArrayList<Solution>();
+	private ArrayList<Solution> population = new ArrayList<Solution>();
+	
+	// Creating an instance of javaluator.
 	private DoubleEvaluator evaluator = new DoubleEvaluator();
 	
+	/**
+	 * 
+	 */
 	public Engine(){
 		dataSet = popDataTable(TRAIN_URL);
 		testSet = popTestSet();
-		current = initialisation(13);
-		//evaluate(current);
-		test();
+		population = initialisation(13);
+		//evaluate(current);test();
+		
+		
+		for(int i = 0; i<GENERATIONS; i++){
+			evaluate(population);
+			System.out.println(getBest(population).getEvaluation());
+			ArrayList<Solution> subPop = getSubPopulation(population,SUB_POPULATION);
+			ArrayList<Solution> winners = getWinners(subPop);
+			ArrayList<Solution> newPopulation = newPopulation(winners);
+			ArrayList<Solution> mutated = mutatePopulation(newPopulation);
+			population.clear();
+			population = (ArrayList<Solution>) mutated.clone();
+		}
+		
+		
+		
+		
+		
 	}
 	
+	public ArrayList<Solution> newPopulation(ArrayList<Solution> winners){
+		ArrayList<Solution> newPopulation = new ArrayList<>();
+		Random r = new Random();
+		for(int i = 0; i<STARTING_POP; i++){
+			int random = r.nextInt(winners.size());
+			Solution toAdd = winners.get(random).clone();
+			newPopulation.add(toAdd);
+		}
+		return newPopulation;
+	}
+	
+	public ArrayList<Solution> getWinners(ArrayList<Solution> subPop){
+		ArrayList<Solution> winners = new ArrayList<>();
+		for(int i = 0; i<subPop.size(); i++){
+			if((i+1) != subPop.size()){
+				winners.add(tournament(subPop.get(i),subPop.get(i+1)).clone());
+			}
+		}
+		return winners;
+	}
+	
+	public ArrayList<Solution> getSubPopulation(ArrayList<Solution> fullPopulation, int size){
+		ArrayList<Solution> subPopulation = new ArrayList<Solution>();
+		
+		int interval = SUBPOP_INTERVAL;
+		int place = 0;
+		for(int i = 0; i<size; i++){
+			place = ((place+interval) % fullPopulation.size());
+			subPopulation.add(fullPopulation.get(place).clone());
+			fullPopulation.remove(fullPopulation.get(place));
+		}
+		return subPopulation;
+	}
+	/**
+	 * 
+	 * @param solutions
+	 * @return
+	 */
 	public Solution getBest(ArrayList<Solution> solutions){
 		Solution best = null;
 		for(int i = 0; i<solutions.size();i++){
@@ -36,6 +102,12 @@ public class Engine {
 		}
 		return best;
 	}
+	
+	/**
+	 * 
+	 * @param operandsInData
+	 * @return
+	 */
 	public ArrayList<Solution> initialisation(int operandsInData){
 		ArrayList<Solution> solutions = new ArrayList<Solution>();
 		for(int i = 0; i<STARTING_POP; i++){
@@ -43,7 +115,13 @@ public class Engine {
 		}
 		return solutions;
 	}
-
+	
+	/**
+	 * 
+	 * @param data
+	 * @param solution
+	 * @return
+	 */
 	public ArrayList<String> applyDataToFunction(Row data, Solution solution){
 		ArrayList<String> newSolution = new ArrayList<String>();
 		
@@ -57,6 +135,11 @@ public class Engine {
 		return newSolution;
 	}
 	
+	/**
+	 * 
+	 * @param url
+	 * @return
+	 */
 	public ArrayList<Row> popDataTable(String url){
 		ArrayList<Row> dataTable = new ArrayList<Row>();
 		Scanner scanner;
@@ -74,7 +157,11 @@ public class Engine {
 		
 		return dataTable;
 	}
-
+	
+	/**
+	 * 
+	 * @return
+	 */
 	public ArrayList<Row> popTestSet(){
 		ArrayList<Row> returnSet = new ArrayList<Row>();
 		for(int i = 2; i<5; i++){
@@ -82,7 +169,11 @@ public class Engine {
 		}
 		return testSet;
 	}
-
+	
+	/**
+	 * 
+	 * @param solutions
+	 */
 	public void evaluate(ArrayList<Solution> solutions){
 
 				for(int i = 0; i<solutions.size(); i++){
@@ -103,6 +194,11 @@ public class Engine {
 				}
 	}
 	
+	/**
+	 * 
+	 * @param string
+	 * @return
+	 */
 	public String listToString(ArrayList<String> string){
 		String retStr = "";
 		
@@ -112,6 +208,11 @@ public class Engine {
 		return retStr;
 	}
 	
+	/**
+	 * 
+	 * @param toMutate
+	 * @return
+	 */
 	private ArrayList<Solution> mutatePopulation(ArrayList<Solution> toMutate){
 		ArrayList<Solution> mutated = new ArrayList<Solution>();
 		for(int i = 0; i<toMutate.size(); i++){
@@ -129,9 +230,15 @@ public class Engine {
 		}
 		return mutated;
 	}
-
+	
+	/**
+	 * 
+	 * @param parent1
+	 * @param parent2
+	 * @return
+	 */
 	private Solution uniformCrossOver(Solution parent1, Solution parent2){
-		System.out.println("uniform");
+		//System.out.println("uniform");
 		ArrayList<String> parent1String = parent1.getSolution();
 		ArrayList<String> parent2String = parent2.getSolution();
 		
@@ -154,8 +261,14 @@ public class Engine {
 		return child;
 	}
 	
+	/**
+	 * 
+	 * @param parent1
+	 * @param parent2
+	 * @return
+	 */
 	public Solution onePointCrossOver(Solution parent1, Solution parent2){
-		System.out.println("onePoint");
+		//System.out.println("onePoint");
 		Random r = new Random();
 		int crossover = r.nextInt(parent1.getSize());
 		ArrayList<Solution> potentialChildren = new ArrayList<>();
@@ -181,8 +294,14 @@ public class Engine {
 		return getBest(childrenSolutions);
 	}
 	
+	/**
+	 * 
+	 * @param parent1
+	 * @param parent2
+	 * @return
+	 */
 	public Solution arithmeticCrossOver(Solution parent1, Solution parent2){
-		System.out.println("arithmetic");
+		//System.out.println("arithmetic");
 		final String[] chars = parent1.ACCEPTABLE;
 		HashMap<String,Integer> charMap = new HashMap<>();
 		charMap.put(chars[0],0);
@@ -205,6 +324,13 @@ public class Engine {
 		return childSolution;
 	}
 	
+	/**
+	 * 
+	 * @param method
+	 * @param parent1
+	 * @param parent2
+	 * @return
+	 */
 	public Solution crossover(int method, Solution parent1, Solution parent2){
 		if(method == 1){
 			return uniformCrossOver(parent1, parent2);
@@ -217,6 +343,12 @@ public class Engine {
 		}
 	}
 	
+	/**
+	 * 
+	 * @param parent1
+	 * @param parent2
+	 * @return
+	 */
 	public Solution tournament(Solution parent1, Solution parent2){
 		Solution child = crossover(CROSSOVER_METHOD, parent1, parent2);
 		ArrayList<Solution> tournament = new ArrayList<>();
@@ -225,15 +357,18 @@ public class Engine {
 		tournament.add(child);
 		evaluate(tournament);
 		
-		System.out.println("Parent 1: "+parent1.getSolution().toString()+" :: "+parent1.getEvaluation());
+	/*	System.out.println("Parent 1: "+parent1.getSolution().toString()+" :: "+parent1.getEvaluation());
 		System.out.println("Parent 2: "+parent2.getSolution().toString()+" :: "+parent2.getEvaluation());
 		System.out.println("Child   : "+child.getSolution().toString()+" :: "+child.getEvaluation());
-		System.out.println("Winner  : "+getBest(tournament).toString()+" :: "+getBest(tournament).getEvaluation());
+		System.out.println("Winner  : "+getBest(tournament).toString()+" :: "+getBest(tournament).getEvaluation());*/
 	
 		return getBest(tournament);
 		
 	}
 	
+	/**
+	 * 
+	 */
 	public void test(){
 		ArrayList<String> testSol = new ArrayList<String>();
 		testSol.add("+"); testSol.add("-"); testSol.add("*"); testSol.add("+");
