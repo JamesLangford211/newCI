@@ -17,7 +17,7 @@ public class Engine {
 	private static final int GENERATIONS = 1000;
 	private static final int POPULATION = 1000;
 	private static final int SUB_POPULATION = (int) (POPULATION * 0.05);
-	private static final int CROSSOVER_METHOD = 2;
+	private static final int CROSSOVER_METHOD = 1;
 	private static final double MUTATION_PROBABILITY = 0.6;
 	private static final int SUBPOP_INTERVAL = (int) (POPULATION * 0.20);
 	
