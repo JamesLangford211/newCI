@@ -11,14 +11,15 @@ public class Engine {
 	
 	// Variables to store URLs for files to pass in.
 	private static final String TRAIN_URL = "src/cwk_train.csv";
+	private static final String TEST_URL = "src/cwk_test.csv";
 	
 	// Parameters for Evolutionary Algorithm
-	private static final int GENERATIONS = 1000;
-	private static final int STARTING_POP = 10000;
-	private static final int SUB_POPULATION = 500;
-	private static final int CROSSOVER_METHOD = 2;
-	private static final double MUTATION_PROBABILITY = 0.3;
-	private static final int SUBPOP_INTERVAL = 1000;
+	private static final int GENERATIONS = 10000;
+	private static final int POPULATION = 1000;
+	private static final int SUB_POPULATION = 50;
+	private static final int CROSSOVER_METHOD = 1;
+	private static final double MUTATION_PROBABILITY = 0.6;
+	private static final int SUBPOP_INTERVAL = (int) (POPULATION * 0.20);
 	
 	// ArrayLists to store population and data.
 	private ArrayList<Row> dataSet = new ArrayList<Row>();
@@ -28,26 +29,35 @@ public class Engine {
 	// Creating an instance of javaluator.
 	private DoubleEvaluator evaluator = new DoubleEvaluator();
 	
+	private Solution overallBest = null;
+	
 	/**
 	 * 
 	 */
 	public Engine(){
 		dataSet = popDataTable(TRAIN_URL);
 		testSet = popTestSet();
-		population = initialisation(13);
-		//evaluate(current);test();
-		
+		population = initialisation(13);		
 		
 		for(int i = 0; i<GENERATIONS; i++){
 			evaluate(population);
-			System.out.println(getBest(population).getEvaluation());
+			Solution best = getBest(population);
+			if(overallBest == null || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
+				overallBest = best.clone();
+			}
+			System.out.println(best.getEvaluation() + " :-:                                       OVERALL-BEST: "+overallBest.getEvaluation());
 			ArrayList<Solution> subPop = getSubPopulation(population,SUB_POPULATION);
+			subPop.add(best);
+
 			ArrayList<Solution> winners = getWinners(subPop);
 			ArrayList<Solution> newPopulation = newPopulation(winners);
 			ArrayList<Solution> mutated = mutatePopulation(newPopulation);
 			population.clear();
 			population = (ArrayList<Solution>) mutated.clone();
 		}
+		
+		System.out.println("\n *************************** \n"
+				+ "Best at end: " + overallBest + "\n *************************** \n");
 		
 		
 		
@@ -58,7 +68,7 @@ public class Engine {
 	public ArrayList<Solution> newPopulation(ArrayList<Solution> winners){
 		ArrayList<Solution> newPopulation = new ArrayList<>();
 		Random r = new Random();
-		for(int i = 0; i<STARTING_POP; i++){
+		for(int i = 0; i<POPULATION; i++){
 			int random = r.nextInt(winners.size());
 			Solution toAdd = winners.get(random).clone();
 			newPopulation.add(toAdd);
@@ -110,7 +120,7 @@ public class Engine {
 	 */
 	public ArrayList<Solution> initialisation(int operandsInData){
 		ArrayList<Solution> solutions = new ArrayList<Solution>();
-		for(int i = 0; i<STARTING_POP; i++){
+		for(int i = 0; i<POPULATION; i++){
 			solutions.add(new Solution(operandsInData));
 		}
 		return solutions;
