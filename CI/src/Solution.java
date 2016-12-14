@@ -3,7 +3,7 @@ import java.util.Collections;
 import java.util.Random;
 
 public class Solution implements Cloneable {
-	private final String[] acceptable = {"+","-","*"};
+	final String[] ACCEPTABLE = {"+","-","*"};
 	private ArrayList<String> solution = new ArrayList<String>();
 	private Double evaluation;
 	private ArrayList<Integer> mutateShuffle = new ArrayList<Integer>();
@@ -13,8 +13,8 @@ public class Solution implements Cloneable {
 		this.columns = columns;
 		Random ran = new Random();
 		for(int i = 0; i<columns-1;i++){
-			int random = ran.nextInt(acceptable.length);
-			solution.add(acceptable[random]);
+			int random = ran.nextInt(ACCEPTABLE.length);
+			solution.add(ACCEPTABLE[random]);
 			mutateShuffle.add(i);
 		}
 	}
@@ -25,8 +25,8 @@ public class Solution implements Cloneable {
 	
 	public void changeRandomly(int index){
 		Random ran = new Random();
-		int random = ran.nextInt(acceptable.length);
-		solution.set(index, acceptable[random]);
+		int random = ran.nextInt(ACCEPTABLE.length);
+		solution.set(index, ACCEPTABLE[random]);
 
 	}
 	

@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -10,6 +11,8 @@ public class Engine {
 	
 	private static final String TRAIN_URL = "src/cwk_train.csv";
 	private static final int STARTING_POP = 10;
+	private static final int CROSSOVER_METHOD = 3;
+	
 	private static final double MUTATION_PROBABILITY = 1.0;
 	private ArrayList<Row> dataSet = new ArrayList<Row>();
 	private ArrayList<Row> testSet = new ArrayList<Row>();
@@ -96,7 +99,7 @@ public class Engine {
 					
 					distanceAway = distanceAway/testSet.size();
 					solutions.get(i).setEvaluation(distanceAway);
-					System.out.println(solutions.get(i).getSolution().toString() + " :: " + solutions.get(i).getEvaluation());
+					//System.out.println(solutions.get(i).getSolution().toString() + " :: " + solutions.get(i).getEvaluation());
 				}
 	}
 	
@@ -113,25 +116,134 @@ public class Engine {
 		ArrayList<Solution> mutated = new ArrayList<Solution>();
 		for(int i = 0; i<toMutate.size(); i++){
 			Random r = new Random();
-			int random = r.nextInt(toMutate.get(i).getSize());
-			mutated.add(toMutate.get(i).clone());
-			mutated.get(i).changeRandomly(random);
+			Double result = r.nextDouble();
+			if(result<MUTATION_PROBABILITY){
+				int random = r.nextInt(toMutate.get(i).getSize());
+				mutated.add(toMutate.get(i).clone());
+				mutated.get(i).changeRandomly(random);
+			}
+			else{
+				mutated.add(toMutate.get(i).clone());
+			}
+			
 		}
 		return mutated;
 	}
 
+	private Solution uniformCrossOver(Solution parent1, Solution parent2){
+		System.out.println("uniform");
+		ArrayList<String> parent1String = parent1.getSolution();
+		ArrayList<String> parent2String = parent2.getSolution();
+		
+		//System.out.println("_-_-_-_- Uniform Crossover: _-_-_-_-_");
+		//System.out.println(parent1.toString());
+		//System.out.println(parent2.toString());
+
+		Random r = new Random();
+		ArrayList<String> childString = new ArrayList<String>();
+		for(int i = 0; i<parent1.getSize();i++){
+			if(r.nextBoolean()){
+				childString.add(parent1String.get(i));
+			}
+			else{
+				childString.add(parent2String.get(i));
+			}
+		}
+		Solution child = new Solution(childString);
+		//System.out.println(child.toString());
+		return child;
+	}
 	
+	public Solution onePointCrossOver(Solution parent1, Solution parent2){
+		System.out.println("onePoint");
+		Random r = new Random();
+		int crossover = r.nextInt(parent1.getSize());
+		ArrayList<Solution> potentialChildren = new ArrayList<>();
+		ArrayList<String> child1 = new ArrayList<>();
+		ArrayList<String> child2 = new ArrayList<>();
+		child1.addAll(parent1.getSolution().subList(0, crossover));
+		child1.addAll(parent2.getSolution().subList(crossover, parent2.getSize()));
+		child2.addAll(parent2.getSolution().subList(0, crossover));
+		child2.addAll(parent1.getSolution().subList(crossover, parent2.getSize()));
+		
+		Solution c1 = new Solution(child1);
+		Solution c2 = new Solution(child2);
+		ArrayList<Solution> childrenSolutions = new ArrayList<>();
+		childrenSolutions.add(c1);
+		childrenSolutions.add(c2);
+		evaluate(childrenSolutions);
+		
+		//System.out.println(child1.toString() + " :: " + crossover + " :: " + c1.getEvaluation());
+		//System.out.println(child2.toString() + " :: " + crossover + " :: " + c2.getEvaluation());
+		
+		//System.out.println(getBest(childrenSolutions).getEvaluation());
+	
+		return getBest(childrenSolutions);
+	}
+	
+	public Solution arithmeticCrossOver(Solution parent1, Solution parent2){
+		System.out.println("arithmetic");
+		final String[] chars = parent1.ACCEPTABLE;
+		HashMap<String,Integer> charMap = new HashMap<>();
+		charMap.put(chars[0],0);
+		charMap.put(chars[1],1);
+		charMap.put(chars[2],2);
+		
+		//System.out.println(parent1.getSolution());
+		//System.out.println(parent2.getSolution());
+		
+		//Sum together values of two parents
+		ArrayList<String> child = new ArrayList<>();
+		Random r = new Random();
+		int randomInterval = r.nextInt(9);
+		for(int i = 0; i<parent1.getSize(); i++){
+			int cellVal = (((charMap.get(parent1.getSolution().get(i)) + charMap.get(parent2.getSolution().get(i)))+randomInterval) % 3);
+			child.add(chars[cellVal]);
+		}
+		Solution childSolution = new Solution(child);
+		//System.out.println(childSolution.getSolution());
+		return childSolution;
+	}
+	
+	public Solution crossover(int method, Solution parent1, Solution parent2){
+		if(method == 1){
+			return uniformCrossOver(parent1, parent2);
+		}
+		else if(method == 2){
+			return onePointCrossOver(parent1, parent2);
+		}
+		else{
+			return arithmeticCrossOver(parent1, parent2);
+		}
+	}
+	
+	public Solution tournament(Solution parent1, Solution parent2){
+		Solution child = crossover(CROSSOVER_METHOD, parent1, parent2);
+		ArrayList<Solution> tournament = new ArrayList<>();
+		tournament.add(parent1);
+		tournament.add(parent2);
+		tournament.add(child);
+		evaluate(tournament);
+		
+		System.out.println("Parent 1: "+parent1.getSolution().toString()+" :: "+parent1.getEvaluation());
+		System.out.println("Parent 2: "+parent2.getSolution().toString()+" :: "+parent2.getEvaluation());
+		System.out.println("Child   : "+child.getSolution().toString()+" :: "+child.getEvaluation());
+		System.out.println("Winner  : "+getBest(tournament).toString()+" :: "+getBest(tournament).getEvaluation());
+	
+		return getBest(tournament);
+		
+	}
 	
 	public void test(){
 		ArrayList<String> testSol = new ArrayList<String>();
-		testSol.add("+"); testSol.add("+"); testSol.add("+");
-		testSol.add("-"); testSol.add("-"); testSol.add("-"); 
-		testSol.add("*"); testSol.add("*"); testSol.add("*"); 
+		testSol.add("+"); testSol.add("-"); testSol.add("*"); testSol.add("+");
+		testSol.add("+"); testSol.add("-"); testSol.add("*"); testSol.add("+");
+		testSol.add("+"); testSol.add("-"); testSol.add("*"); testSol.add("+");
 		
 		ArrayList<String> testSol2 = new ArrayList<String>();
-		testSol2.add("+"); testSol2.add("+"); testSol2.add("+");
-		testSol2.add("-"); testSol2.add("-"); testSol2.add("-"); 
-		testSol2.add("*"); testSol2.add("*"); testSol2.add("*");
+		testSol2.add("*"); testSol2.add("*"); testSol2.add("*"); testSol2.add("+");
+		testSol2.add("-"); testSol2.add("-"); testSol2.add("-"); testSol2.add("+");
+		testSol2.add("+"); testSol2.add("+"); testSol2.add("+"); testSol2.add("+");
 
 		
 		Solution sol = new Solution(13);
@@ -151,13 +263,20 @@ public class Engine {
 		
 
 		System.out.println("----------------------------");
-		ArrayList<Solution> mutated = new ArrayList<Solution>();
-		mutated = mutatePopulation(solutionsTest);
+		//ArrayList<Solution> mutated = new ArrayList<Solution>();
+		//mutated = mutatePopulation(solutionsTest);
 		
-		evaluate(mutated);
+		//evaluate(mutated);
+			
 		
+		//System.out.println("____________________ \n"+getBest(mutated).getEvaluation());
 		
-		System.out.println("____________________ \n"+getBest(solutionsTest).getEvaluation());
+		//uniformCrossOver(mutated.get(0),mutated.get(1));
+		//onePointCrossOver(solutionsTest.get(0),solutionsTest.get(1));
+		//arithmeticCrossOver(solutionsTest.get(0),solutionsTest.get(1));
+		
+		tournament(solutionsTest.get(0),solutionsTest.get(1));
+		
 	}
 
 }
