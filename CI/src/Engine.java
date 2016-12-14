@@ -78,13 +78,14 @@ public class Engine {
 		
 		System.out.println("\n *************************** \n"
 				+ "Best at end: " + overallBest + "\n *************************** \n");
-		
-		System.out.println("--------------------------- \n"
-				+ " Applying "+ overallBest + " to test data: \n");
-		
-		
-		
-		
+			
+		applyToTest(overallBest);
+	}
+	
+	public void applyToTest(Solution best){
+		for(){
+			// TODO: uhefiuehiuehiuhes
+		}
 	}
 	
 	public boolean bestIsSame(Solution one, Solution two){
