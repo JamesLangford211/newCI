@@ -16,15 +16,14 @@ public class Engine {
 	
 	// Parameters for Evolutionary Algorithm
 	private boolean ELITISM = false;
-	private static final int GENERATIONS = 300;
-	private static final int POPULATION = 50;
-	private static final int SUB_POPULATION = 25;
+	private static final int GENERATIONS = 100;
+	private static final int POPULATION = 200;
+	private static final int SUB_POPULATION = 35;
 	private static final int CROSSOVER_METHOD = 2;
 	private static final double MUTATION_PROBABILITY = 0.2;
-	private static final int SUBPOP_INTERVAL = (int) (POPULATION * 0.20);
 	
 	// ArrayLists to store population and data.
-	private ArrayList<Row> dataSet = new ArrayList<Row>();
+	private ArrayList<Row> trainSet = new ArrayList<Row>();
 	private ArrayList<Row> testSet = new ArrayList<Row>();
 	private ArrayList<Solution> population = new ArrayList<Solution>();
 	
@@ -40,12 +39,12 @@ public class Engine {
 	 * 
 	 */
 	public Engine(){
-		dataSet = popDataTable(TRAIN_URL);
+		trainSet = popDataTable(TRAIN_URL);
 		testSet = popDataTable(TEST_URL);
 		population = initialisation(13);		
 		
 		for(int i = 0; i<GENERATIONS; i++){
-			evaluate(population);
+			evaluate(population, trainSet);
 			Solution best = getBest(population);
 			
 			if(overallBest == null || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
@@ -57,57 +56,27 @@ public class Engine {
 			ArrayList<Solution> winners = getWinners(subPop);
 			ArrayList<Solution> newPopulation = newPopulation(winners);
 			ArrayList<Solution> mutated = mutatePopulation(newPopulation);
+			//evaluate(mutated,dataSet);
 			//mutated.add(best);
+			population.clear();
 			population = (ArrayList<Solution>) mutated.clone();
 			
-			//System.out.println("Iteration: " + i + "/" + GENERATIONS + " : OB: "+overallBest.getEvaluation()+ " : IB: "+ best.getEvaluation());
-			
-			/*System.out.println(best.getEvaluation() + " :-:  \n "
-					+ "OVERALL-BEST: "+overallBest.getEvaluation() + "\n"
-							+ ELITISM +" \n"
-									+ duplicateIteration
-							+ "************");*/
-			
+			System.out.println("Iteration: " + i + "/" + GENERATIONS + " : OB: "+overallBest.getEvaluation()+ " : IB: "+ best.getEvaluation());	
 			
 		}
-		
-		//System.out.println("\n *************************** \n"
-		//		+ "Best at end: " + overallBest + "\n *************************** \n");
-		
+				
 		System.out.println(bestRecord.toString());
 		System.out.println("------ Applying to TEST set of data ------");
 		applyToTest(overallBest);
 	} 
 	
-	public void applyToTest(Solution best){
-		Double totalFitness = 0.0;
+	public void applyToTest(Solution best){		
+		ArrayList<Solution> s = new ArrayList();
+		s.add(best.clone());
+		evaluate(s,testSet);
+		System.out.println(s.get(0).getEvaluation());
+	}
 		
-		for(int i = 0; i<testSet.size();i++){
-			Double fitness = 0.0;
-			//System.out.println("Data row "+i+" : ");
-			//apply function to row
-			ArrayList<String> expression = applyDataToFunction(testSet.get(i),best);
-			String expressionStr = listToString(expression);
-			//System.out.println(expressionStr);
-			Double expected = testSet.get(i).getExpected();
-			Double evaluated = evaluator.evaluate(expressionStr);
-			fitness = evaluated - expected;
-			//System.out.println(" : Fitness: " + fitness);
-			
-			//show fitness for that row
-			totalFitness += Math.abs(fitness);
-			//add up average fitess
-		}
-		Double averageFitness = totalFitness/testSet.size();
-		System.out.println(totalFitness);
-		System.out.println(testSet.size());
-		System.out.println("Average: "+averageFitness);
-	}
-	
-	public boolean bestIsSame(Solution one, Solution two){
-		return one.getEvaluation() == two.getEvaluation();
-	}
-	
 	public ArrayList<Solution> newPopulation(ArrayList<Solution> winners){
 		ArrayList<Solution> newPopulation = new ArrayList<>();
 		Random r = new Random();
@@ -131,13 +100,11 @@ public class Engine {
 	
 	public ArrayList<Solution> getSubPopulation(ArrayList<Solution> fullPopulation, int size){
 		ArrayList<Solution> subPopulation = new ArrayList<Solution>();
-		
-		int interval = SUBPOP_INTERVAL;
-		int place = 0;
-		for(int i = 0; i<size; i++){
-			place = ((place+interval) % fullPopulation.size());
-			subPopulation.add(fullPopulation.get(place).clone());
-			fullPopulation.remove(fullPopulation.get(place));
+
+		Random r = new Random();
+		for(int i = 0; i<SUB_POPULATION;i++){
+			int random = r.nextInt(fullPopulation.size());
+			subPopulation.add(fullPopulation.get(random).clone());
 		}
 		return subPopulation;
 	}
@@ -150,10 +117,19 @@ public class Engine {
 	public Solution getBest(ArrayList<Solution> solutions){
 		Solution best = null;
 		for(int i = 0; i<solutions.size();i++){
+			//System.out.println("*************");
+			//System.out.print(solutions.get(i).getEvaluation());
+			//System.out.println("  "+solutions.get(i).getSolution().toString());
 			if(best == null || Math.abs(solutions.get(i).getEvaluation()) < Math.abs(best.getEvaluation())){
+				
 				best = solutions.get(i);
+				//System.out.print("NEW BEST:"+best.getEvaluation());
+				//System.out.println("  "+best.getSolution().toString());
 			}
 		}
+		//System.out.print(best.getEvaluation());
+		//System.out.println("  "+best.getSolution().toString());
+		
 		return best;
 	}
 	
@@ -220,7 +196,7 @@ public class Engine {
 	public ArrayList<Row> popTestSet(){
 		ArrayList<Row> returnSet = new ArrayList<Row>();
 		for(int i = 2; i<5; i++){
-			testSet.add(dataSet.get(i));
+			testSet.add(trainSet.get(i));
 		}
 		return testSet;
 	}
@@ -229,26 +205,27 @@ public class Engine {
 	 * 
 	 * @param solutions
 	 */
-	public void evaluate(ArrayList<Solution> solutions){
+	public void evaluate(ArrayList<Solution> solutions, ArrayList<Row> dataSet){
 		for(int j = 0; j<solutions.size(); j++){
 			Double totalFitness = 0.0;
 			for(int i = 0; i<dataSet.size();i++){
 				Double fitness = 0.0;
-				//System.out.println("Data row "+i+" : ");
-				//apply function to row
+
 				ArrayList<String> expression = applyDataToFunction(dataSet.get(i),solutions.get(j));
 				String expressionStr = listToString(expression);
-				//System.out.println(expressionStr);
+
+				
 				Double expected = dataSet.get(i).getExpected();
 				Double evaluated = evaluator.evaluate(expressionStr);
 				fitness = evaluated - expected;
-				//System.out.println(" : Fitness: " + fitness);
 				
 				//show fitness for that row
 				totalFitness += Math.abs(fitness);
 				//add up average fitess
 			}
+			//System.out.println(dataSet.size());
 			Double averageFitness = totalFitness/dataSet.size();
+			//System.out.println("Avg Fitness" + averageFitness);
 			solutions.get(j).setEvaluation(averageFitness);
 	}
 }
@@ -344,13 +321,14 @@ public class Engine {
 		ArrayList<Solution> childrenSolutions = new ArrayList<>();
 		childrenSolutions.add(c1);
 		childrenSolutions.add(c2);
-		evaluate(childrenSolutions);
+		evaluate(childrenSolutions,trainSet);
 		
 		//System.out.println(child1.toString() + " :: " + crossover + " :: " + c1.getEvaluation());
 		//System.out.println(child2.toString() + " :: " + crossover + " :: " + c2.getEvaluation());
 		
 		//System.out.println(getBest(childrenSolutions).getEvaluation());
 	
+		//System.out.println("CHILDREN------------");
 		return getBest(childrenSolutions);
 	}
 	
@@ -415,13 +393,14 @@ public class Engine {
 		tournament.add(parent1);
 		tournament.add(parent2);
 		tournament.add(child);
-		evaluate(tournament);
+		evaluate(tournament,trainSet);
 		
 	/*	System.out.println("Parent 1: "+parent1.getSolution().toString()+" :: "+parent1.getEvaluation());
 		System.out.println("Parent 2: "+parent2.getSolution().toString()+" :: "+parent2.getEvaluation());
 		System.out.println("Child   : "+child.getSolution().toString()+" :: "+child.getEvaluation());
 		System.out.println("Winner  : "+getBest(tournament).toString()+" :: "+getBest(tournament).getEvaluation());*/
 	
+		//System.out.println("CHILDREN------------");
 		return getBest(tournament);
 		
 	}
@@ -454,10 +433,10 @@ public class Engine {
 		solutionsTest.add(sol2);
 		
 		
-		evaluate(solutionsTest);
+		evaluate(solutionsTest,trainSet);
 		
 
-		System.out.println("----------------------------");
+		//System.out.println("----------------------------");
 		//ArrayList<Solution> mutated = new ArrayList<Solution>();
 		//mutated = mutatePopulation(solutionsTest);
 		
