@@ -13,12 +13,13 @@ public class Engine {
 	// Variables to store URLs for files to pass in.
 	private static final String TRAIN_URL = "src/cwk_train.csv";
 	private static final String TEST_URL = "src/cwk_test.csv";
+	static final int SEED = 133787848;
 	
 	// Parameters for Evolutionary Algorithm
 	private boolean ELITISM = false;
-	private static final int GENERATIONS = 100;
+	private static final int GENERATIONS = 300;//30
 	private static final int POPULATION = 200;
-	private static final int SUB_POPULATION = 35;
+	private static final int SUB_POPULATION = 50;//30
 	private static final int CROSSOVER_METHOD = 2;
 	private static final double MUTATION_PROBABILITY = 0.2;
 	
@@ -33,7 +34,7 @@ public class Engine {
 	private Solution overallBest = null;
 	private FunctionRecord bestRecord = null;
 	
-	//private int duplicateIteration = 0;
+
 	
 	/**
 	 * 
@@ -44,10 +45,10 @@ public class Engine {
 		population = initialisation(13);		
 		
 		for(int i = 0; i<GENERATIONS; i++){
-			evaluate(population, trainSet);
+			population = evaluate(population, trainSet);
 			Solution best = getBest(population);
 			
-			if(overallBest == null || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
+			if(overallBest == null || Double.isNaN(overallBest.getEvaluation()) || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
 				overallBest = best.clone();
 				bestRecord = new FunctionRecord(overallBest.getSolution(),i,overallBest.getEvaluation());
 			}
@@ -55,11 +56,11 @@ public class Engine {
 			ArrayList<Solution> subPop = getSubPopulation(population,SUB_POPULATION);
 			ArrayList<Solution> winners = getWinners(subPop);
 			ArrayList<Solution> newPopulation = newPopulation(winners);
-			ArrayList<Solution> mutated = mutatePopulation(newPopulation);
+			population = mutatePopulation(newPopulation);
 			//evaluate(mutated,dataSet);
 			//mutated.add(best);
-			population.clear();
-			population = (ArrayList<Solution>) mutated.clone();
+			//population.clear();
+			//population = (ArrayList<Solution>) mutated.clone();
 			
 			System.out.println("Iteration: " + i + "/" + GENERATIONS + " : OB: "+overallBest.getEvaluation()+ " : IB: "+ best.getEvaluation());	
 			
@@ -69,6 +70,13 @@ public class Engine {
 		System.out.println("------ Applying to TEST set of data ------");
 		applyToTest(overallBest);
 	} 
+	
+	public ArrayList<Solution> roulette(ArrayList<Solution> population, int limit){
+		
+		
+		return null;
+		
+	}
 	
 	public void applyToTest(Solution best){		
 		ArrayList<Solution> s = new ArrayList();
@@ -82,15 +90,19 @@ public class Engine {
 		Random r = new Random();
 		for(int i = 0; i<POPULATION; i++){
 			int random = r.nextInt(winners.size());
-			Solution toAdd = winners.get(random).clone();
-			newPopulation.add(toAdd);
+			Solution toAdd = winners.get(random);
+			newPopulation.add(toAdd.clone());
 		}
 		return newPopulation;
 	}
 	
 	public ArrayList<Solution> getWinners(ArrayList<Solution> subPop){
+		
+		if(subPop.size() % 2 != 0){
+			subPop.remove(subPop.size()-1);
+		}
 		ArrayList<Solution> winners = new ArrayList<>();
-		for(int i = 0; i<subPop.size(); i++){
+		for(int i = 0; i<subPop.size(); i+=2){
 			if((i+1) != subPop.size()){
 				winners.add(tournament(subPop.get(i),subPop.get(i+1)).clone());
 			}
@@ -120,7 +132,7 @@ public class Engine {
 			//System.out.println("*************");
 			//System.out.print(solutions.get(i).getEvaluation());
 			//System.out.println("  "+solutions.get(i).getSolution().toString());
-			if(best == null || Math.abs(solutions.get(i).getEvaluation()) < Math.abs(best.getEvaluation())){
+			if(best == null || !Double.isNaN(solutions.get(i).getEvaluation()) || Math.abs(solutions.get(i).getEvaluation()) < Math.abs(best.getEvaluation())){
 				
 				best = solutions.get(i);
 				//System.out.print("NEW BEST:"+best.getEvaluation());
@@ -205,20 +217,18 @@ public class Engine {
 	 * 
 	 * @param solutions
 	 */
-	public void evaluate(ArrayList<Solution> solutions, ArrayList<Row> dataSet){
+	public ArrayList<Solution> evaluate(ArrayList<Solution> solutions, ArrayList<Row> dataSet){
+		ArrayList<Solution> returnArray = new ArrayList();
 		for(int j = 0; j<solutions.size(); j++){
 			Double totalFitness = 0.0;
 			for(int i = 0; i<dataSet.size();i++){
 				Double fitness = 0.0;
 
 				ArrayList<String> expression = applyDataToFunction(dataSet.get(i),solutions.get(j));
-				String expressionStr = listToString(expression);
-
-				
+				String expressionStr = listToString(expression);			
 				Double expected = dataSet.get(i).getExpected();
 				Double evaluated = evaluator.evaluate(expressionStr);
 				fitness = evaluated - expected;
-				
 				//show fitness for that row
 				totalFitness += Math.abs(fitness);
 				//add up average fitess
@@ -227,7 +237,11 @@ public class Engine {
 			Double averageFitness = totalFitness/dataSet.size();
 			//System.out.println("Avg Fitness" + averageFitness);
 			solutions.get(j).setEvaluation(averageFitness);
+			Solution s = new Solution(solutions.get(j).getSolution());
+			s.setEvaluation(averageFitness);
+			returnArray.add(s);	
 	}
+		return returnArray;
 }
 	
 	
@@ -257,14 +271,17 @@ public class Engine {
 			Double result = r.nextDouble();
 			if(result<MUTATION_PROBABILITY){
 				int random = r.nextInt(toMutate.get(i).getSize());
-				mutated.add(toMutate.get(i).clone());
-				mutated.get(i).changeRandomly(random);
+				Solution m = new Solution(toMutate.get(i).getSolution());
+				m.changeRandomly(random);
+				mutated.add(m);
 			}
+			
 			else{
 				mutated.add(toMutate.get(i).clone());
 			}
-			
 		}
+		
+		mutated = evaluate(mutated,trainSet);
 		return mutated;
 	}
 	
@@ -321,7 +338,7 @@ public class Engine {
 		ArrayList<Solution> childrenSolutions = new ArrayList<>();
 		childrenSolutions.add(c1);
 		childrenSolutions.add(c2);
-		evaluate(childrenSolutions,trainSet);
+		childrenSolutions = evaluate(childrenSolutions,trainSet);
 		
 		//System.out.println(child1.toString() + " :: " + crossover + " :: " + c1.getEvaluation());
 		//System.out.println(child2.toString() + " :: " + crossover + " :: " + c2.getEvaluation());
@@ -393,7 +410,7 @@ public class Engine {
 		tournament.add(parent1);
 		tournament.add(parent2);
 		tournament.add(child);
-		evaluate(tournament,trainSet);
+		tournament = evaluate(tournament,trainSet);
 		
 	/*	System.out.println("Parent 1: "+parent1.getSolution().toString()+" :: "+parent1.getEvaluation());
 		System.out.println("Parent 2: "+parent2.getSolution().toString()+" :: "+parent2.getEvaluation());
@@ -433,7 +450,7 @@ public class Engine {
 		solutionsTest.add(sol2);
 		
 		
-		evaluate(solutionsTest,trainSet);
+		solutionsTest = evaluate(solutionsTest,trainSet);
 		
 
 		//System.out.println("----------------------------");
