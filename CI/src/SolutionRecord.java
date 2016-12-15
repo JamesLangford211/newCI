@@ -12,10 +12,10 @@ public class SolutionRecord {
 	}
 	
 	public String toString(){
-		String returnString = "BEST RESULT:"
+		String returnString = "\n BEST RESULT:"
 				+ "\n Function: " + actualFunction.toString()
 				+ "\n Found at generation: " + foundAt
-				+ "\n Average fitness: " + averageFitness;
+				+ "\n Average fitness: " + averageFitness + "\n";
 		
 		
 		return returnString;

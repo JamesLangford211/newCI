@@ -7,6 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
+import javax.script.*;
 
 import com.fathzer.soft.javaluator.DoubleEvaluator;
 
@@ -18,10 +19,10 @@ public class Engine {
 	static final int SEED = 133787848;
 	
 	// Parameters for Evolutionary Algorithm
-	private boolean ELITISM = false;
-	private static final int GENERATIONS = 50;//30
-	private static final int POPULATION = 5000;
-	private static final int SUB_POPULATION = 100;//30
+	private boolean ELITISM = true;
+	private static final int GENERATIONS = 300;//30
+	private static final int POPULATION = 200;
+	private static final int SUB_POPULATION = 50;//30
 	private static final int CROSSOVER_METHOD = 2;
 	private static final double MUTATION_PROBABILITY = 0.2;
 	
@@ -32,9 +33,11 @@ public class Engine {
 	
 	// Creating an instance of javaluator.
 	private DoubleEvaluator evaluator = new DoubleEvaluator();
+
 	
 	private Solution overallBest = null;
 	private SolutionRecord bestRecord = null;
+	private Solution terrible = new Solution(9999999999.99);
 	
 
 	
@@ -49,41 +52,88 @@ public class Engine {
 		for(int i = 0; i<GENERATIONS; i++){
 			population = evaluate(population, trainSet);
 			Solution best = getBest(population);
+			//System.out.println("BEST:"+best.getEvaluation());
 			
-			if(overallBest == null || Double.isNaN(overallBest.getEvaluation()) || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
+			/*if(overallBest == null || (!Double.isNaN(best.getEvaluation()) && Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation()))){
 				overallBest = best.clone();
 				bestRecord = new SolutionRecord(overallBest.getSolution(),i,overallBest.getEvaluation());
+				System.out.println(bestRecord.toString());
+			}*/
+		
+			System.out.println("GENERATION "+i);
+			if(!(Double.isNaN(best.getEvaluation()))){
+				if(overallBest == null || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
+					overallBest = best.clone();
+					overallBest.setEvaluation(best.getEvaluation());
+					overallBest.setSolution(best.getSolution());
+					bestRecord = new SolutionRecord(overallBest.getSolution(),i,overallBest.getEvaluation());
+					System.out.println(bestRecord.toString());
+
+				}	
 			}
+			else{
+				overallBest = terrible.clone();
+			}
+			
+			
 			
 			
 			ArrayList<Solution> subPop = getSubPopulation(population,SUB_POPULATION);
 			
-			Random r = new Random();
-			int random = r.nextInt(subPop.size());
-			subPop.remove(random);
-			subPop.add(best);
+			if(ELITISM){
+				
+				Random r = new Random();
+				int random = r.nextInt(subPop.size());
+				subPop.remove(random);
+				subPop.add(best.clone());
+				
+				
+			}
 			
 			ArrayList<Solution> winners = getWinners(subPop);
 			ArrayList<Solution> newPopulation = newPopulation(winners);
 			population = mutatePopulation(newPopulation);
 			
 			
-			System.out.println("Iteration: " + i + "/" 
+			/*System.out.println("Iteration: " + i + "/" 
 			+ GENERATIONS +" : OB: "+overallBest.getEvaluation()
-			+ " : IB: "+ best.getEvaluation());	
+			+ " : IB: "+ best.getEvaluation());	*/
 			
 		}
-				
-		System.out.println(bestRecord.toString());
+	
+		System.out.println(parameters());
+		
 		System.out.println("------ Applying to TEST set of data ------");
 		applyToTest(overallBest);
 	} 
 
-
+	public String parameters(){
+		String returnStr = "";
+				
+		String crossover = "";
+		
+		switch (CROSSOVER_METHOD) {
+        case 1:  crossover = "Uniform Crossover";
+                break;
+        case 2:  crossover = "One point Crossover";
+                break;
+        case 3:  crossover = "Arithemetic Crossover";
+        		break;
+		}
+    
+		
+		returnStr+= "GENERATIONS: " + GENERATIONS+". \n"
+				+ "POPULATION: " + POPULATION+". \n"
+				+ "SUB_POPULATION: " + SUB_POPULATION+". \n"
+				+ "CROSSOVER: " + crossover+". \n"
+				+ "MUTATION PROBABILITY: " + MUTATION_PROBABILITY+". \n";
+		
+		return returnStr;
+	}
 	public void applyToTest(Solution best){		
 		ArrayList<Solution> s = new ArrayList();
 		s.add(best.clone());
-		evaluate(s,testSet);
+		s = evaluate(s,testSet);
 		System.out.println(s.get(0).getEvaluation());
 	}
 		
@@ -129,21 +179,10 @@ public class Engine {
 	 * @return
 	 */
 	public Solution getBest(ArrayList<Solution> solutions){
-		Solution best = null;
-		for(int i = 0; i<solutions.size();i++){
-			//System.out.println("*************");
-			//System.out.print(solutions.get(i).getEvaluation());
-			//System.out.println("  "+solutions.get(i).getSolution().toString());
-			if(best == null || !Double.isNaN(solutions.get(i).getEvaluation()) || Math.abs(solutions.get(i).getEvaluation()) < Math.abs(best.getEvaluation())){
-				
-				best = solutions.get(i);
-				//System.out.print("NEW BEST:"+best.getEvaluation());
-				//System.out.println("  "+best.getSolution().toString());
-			}
-		}
-		//System.out.print(best.getEvaluation());
-		//System.out.println("  "+best.getSolution().toString());
-		
+		ArrayList<Solution> sort = new ArrayList();
+		sort = solutions;
+		Collections.sort(sort);
+		Solution best = sort.get(0).clone();	
 		return best;
 	}
 	
@@ -222,6 +261,9 @@ public class Engine {
 	public ArrayList<Solution> evaluate(ArrayList<Solution> solutions, ArrayList<Row> dataSet){
 		ArrayList<Solution> returnArray = new ArrayList();
 		Double totalFitness = 0.0;
+		
+		ScriptEngineManager SEM = new ScriptEngineManager();
+		ScriptEngine SE = SEM.getEngineByName("JavaScript");
 		for(int j = 0; j<solutions.size(); j++){
 			for(int i = 0; i<dataSet.size();i++){
 				Double fitness = 0.0;
@@ -229,7 +271,14 @@ public class Engine {
 				ArrayList<String> expression = applyDataToFunction(dataSet.get(i),solutions.get(j));
 				String expressionStr = listToString(expression);			
 				Double expected = dataSet.get(i).getExpected();
-				Double evaluated = evaluator.evaluate(expressionStr);
+				Object result = null;
+				try{
+					result = SE.eval(expressionStr);
+				}catch(ScriptException e){
+					e.printStackTrace();
+				}
+				
+				Double evaluated = Double.valueOf(result.toString());
 				fitness = evaluated - expected;
 				//show fitness for that row
 				totalFitness += Math.abs(fitness);
@@ -237,8 +286,8 @@ public class Engine {
 			}
 			//System.out.println(dataSet.size());
 			Double averageFitness = totalFitness/dataSet.size();
-			//System.out.println("Avg Fitness" + averageFitness);
-			solutions.get(j).setEvaluation(averageFitness);
+
+			
 			Solution s = new Solution(solutions.get(j).getSolution());
 			s.setEvaluation(averageFitness);
 			
@@ -276,7 +325,7 @@ public class Engine {
 				int random = r.nextInt(toMutate.get(i).getSize());
 				Solution m = new Solution(toMutate.get(i).getSolution());
 				m.changeRandomly(random);
-				mutated.add(m);
+				mutated.add(m.clone());
 			}
 			
 			else{
@@ -410,9 +459,9 @@ public class Engine {
 	public Solution tournament(Solution parent1, Solution parent2){
 		Solution child = crossover(CROSSOVER_METHOD, parent1, parent2);
 		ArrayList<Solution> tournament = new ArrayList<>();
-		tournament.add(parent1);
-		tournament.add(parent2);
-		tournament.add(child);
+		tournament.add(parent1.clone());
+		tournament.add(parent2.clone());
+		tournament.add(child.clone());
 		tournament = evaluate(tournament,trainSet);
 		
 	/*	System.out.println("Parent 1: "+parent1.getSolution().toString()+" :: "+parent1.getEvaluation());
