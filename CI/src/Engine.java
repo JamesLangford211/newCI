@@ -7,7 +7,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
-import javax.script.*;
 
 import com.fathzer.soft.javaluator.DoubleEvaluator;
 
@@ -19,11 +18,11 @@ public class Engine {
 	static final int SEED = 133787848;
 	
 	// Parameters for Evolutionary Algorithm
-	private boolean ELITISM = true;
+	private boolean ELITISM = false;
 	private static final int GENERATIONS = 300;//30
 	private static final int POPULATION = 200;
-	private static final int SUB_POPULATION = 50;//30
-	private static final int CROSSOVER_METHOD = 2;
+	private static final int SUB_POPULATION = 100;//30
+	private static final int CROSSOVER_METHOD = 3;
 	private static final double MUTATION_PROBABILITY = 0.2;
 	
 	// ArrayLists to store population and data.
@@ -37,12 +36,9 @@ public class Engine {
 	
 	private Solution overallBest = null;
 	private SolutionRecord bestRecord = null;
-	private Solution terrible = new Solution(9999999999.99);
-	
-
 	
 	/**
-	 * 
+	 * Constructor for the Engine class, calls the core of the evolutionary algorithm
 	 */
 	public Engine(){
 		trainSet = popDataTable(TRAIN_URL);
@@ -51,32 +47,20 @@ public class Engine {
 		
 		for(int i = 0; i<GENERATIONS; i++){
 			population = evaluate(population, trainSet);
-			Solution best = getBest(population);
-			//System.out.println("BEST:"+best.getEvaluation());
 			
-			/*if(overallBest == null || (!Double.isNaN(best.getEvaluation()) && Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation()))){
-				overallBest = best.clone();
-				bestRecord = new SolutionRecord(overallBest.getSolution(),i,overallBest.getEvaluation());
-				System.out.println(bestRecord.toString());
-			}*/
+			
+			Solution best = getBest(population);
 		
 			System.out.println("GENERATION "+i);
-			if(!(Double.isNaN(best.getEvaluation()))){
-				if(overallBest == null || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
-					overallBest = best.clone();
-					overallBest.setEvaluation(best.getEvaluation());
-					overallBest.setSolution(best.getSolution());
-					bestRecord = new SolutionRecord(overallBest.getSolution(),i,overallBest.getEvaluation());
-					System.out.println(bestRecord.toString());
+			
+			if(overallBest == null || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
+				overallBest = best.clone();
+				overallBest.setEvaluation(best.getEvaluation());
+				overallBest.setSolution(best.getSolution());
+				bestRecord = new SolutionRecord(overallBest.getSolution(),i,overallBest.getEvaluation());
+				System.out.println(bestRecord.toString());
 
-				}	
-			}
-			else{
-				overallBest = terrible.clone();
-			}
-			
-			
-			
+			}		
 			
 			ArrayList<Solution> subPop = getSubPopulation(population,SUB_POPULATION);
 			
@@ -103,8 +87,6 @@ public class Engine {
 	
 		System.out.println(parameters());
 		
-		System.out.println("------ Applying to TEST set of data ------");
-		applyToTest(overallBest);
 	} 
 
 	public String parameters(){
@@ -126,7 +108,8 @@ public class Engine {
 				+ "POPULATION: " + POPULATION+". \n"
 				+ "SUB_POPULATION: " + SUB_POPULATION+". \n"
 				+ "CROSSOVER: " + crossover+". \n"
-				+ "MUTATION PROBABILITY: " + MUTATION_PROBABILITY+". \n";
+				+ "MUTATION PROBABILITY: " + MUTATION_PROBABILITY+". \n"
+						+ "ELITISM: "+ELITISM;
 		
 		return returnStr;
 	}
@@ -261,9 +244,6 @@ public class Engine {
 	public ArrayList<Solution> evaluate(ArrayList<Solution> solutions, ArrayList<Row> dataSet){
 		ArrayList<Solution> returnArray = new ArrayList();
 		Double totalFitness = 0.0;
-		
-		ScriptEngineManager SEM = new ScriptEngineManager();
-		ScriptEngine SE = SEM.getEngineByName("JavaScript");
 		for(int j = 0; j<solutions.size(); j++){
 			for(int i = 0; i<dataSet.size();i++){
 				Double fitness = 0.0;
@@ -272,13 +252,10 @@ public class Engine {
 				String expressionStr = listToString(expression);			
 				Double expected = dataSet.get(i).getExpected();
 				Object result = null;
-				try{
-					result = SE.eval(expressionStr);
-				}catch(ScriptException e){
-					e.printStackTrace();
-				}
 				
-				Double evaluated = Double.valueOf(result.toString());
+				//Double evaluated = Double.valueOf(result.toString());
+				
+				Double evaluated = evaluator.evaluate(expressionStr);
 				fitness = evaluated - expected;
 				//show fitness for that row
 				totalFitness += Math.abs(fitness);

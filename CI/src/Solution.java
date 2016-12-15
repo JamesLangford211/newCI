@@ -3,7 +3,7 @@ import java.util.Collections;
 import java.util.Random;
 
 public class Solution implements Cloneable, Comparable<Solution> {
-	final String[] ACCEPTABLE = {"+","-","*","/"};
+	final String[] ACCEPTABLE = {"+","-","*"};
 	private ArrayList<String> solution = new ArrayList<String>();
 	private Double evaluation;
 	private ArrayList<Integer> mutateShuffle = new ArrayList<Integer>();
