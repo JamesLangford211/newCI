@@ -1,6 +1,7 @@
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Random;
 import java.util.Scanner;
@@ -15,11 +16,11 @@ public class Engine {
 	
 	// Parameters for Evolutionary Algorithm
 	private boolean ELITISM = false;
-	private static final int GENERATIONS = 100;
-	private static final int POPULATION = 1000;
-	private static final int SUB_POPULATION = (int) (POPULATION * 0.05);
+	private static final int GENERATIONS = 300;
+	private static final int POPULATION = 50;
+	private static final int SUB_POPULATION = 25;
 	private static final int CROSSOVER_METHOD = 2;
-	private static final double MUTATION_PROBABILITY = 0.3;
+	private static final double MUTATION_PROBABILITY = 0.2;
 	private static final int SUBPOP_INTERVAL = (int) (POPULATION * 0.20);
 	
 	// ArrayLists to store population and data.
@@ -31,8 +32,9 @@ public class Engine {
 	private DoubleEvaluator evaluator = new DoubleEvaluator();
 	
 	private Solution overallBest = null;
+	private FunctionRecord bestRecord = null;
 	
-	private int duplicateIteration = 0;
+	//private int duplicateIteration = 0;
 	
 	/**
 	 * 
@@ -45,47 +47,61 @@ public class Engine {
 		for(int i = 0; i<GENERATIONS; i++){
 			evaluate(population);
 			Solution best = getBest(population);
+			
 			if(overallBest == null || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
 				overallBest = best.clone();
+				bestRecord = new FunctionRecord(overallBest.getSolution(),i,overallBest.getEvaluation());
 			}
-			
-			if(bestIsSame(best, overallBest)){
-				duplicateIteration++;
-			}
-			else{
-				duplicateIteration = 0;
-			}
-			System.out.println(best.getEvaluation() + " :-:  \n "
-					+ "OVERALL-BEST: "+overallBest.getEvaluation() + "\n"
-							+ ELITISM +" \n"
-									+ duplicateIteration
-							+ "************");
 			
 			ArrayList<Solution> subPop = getSubPopulation(population,SUB_POPULATION);
 			ArrayList<Solution> winners = getWinners(subPop);
 			ArrayList<Solution> newPopulation = newPopulation(winners);
 			ArrayList<Solution> mutated = mutatePopulation(newPopulation);
 			//mutated.add(best);
-	
-			
-			population.clear();
 			population = (ArrayList<Solution>) mutated.clone();
 			
-			if(i == GENERATIONS/2){;
-				ELITISM = true;
-			}
+			//System.out.println("Iteration: " + i + "/" + GENERATIONS + " : OB: "+overallBest.getEvaluation()+ " : IB: "+ best.getEvaluation());
+			
+			/*System.out.println(best.getEvaluation() + " :-:  \n "
+					+ "OVERALL-BEST: "+overallBest.getEvaluation() + "\n"
+							+ ELITISM +" \n"
+									+ duplicateIteration
+							+ "************");*/
+			
+			
 		}
 		
-		System.out.println("\n *************************** \n"
-				+ "Best at end: " + overallBest + "\n *************************** \n");
-			
+		//System.out.println("\n *************************** \n"
+		//		+ "Best at end: " + overallBest + "\n *************************** \n");
+		
+		System.out.println(bestRecord.toString());
+		System.out.println("------ Applying to TEST set of data ------");
 		applyToTest(overallBest);
-	}
+	} 
 	
 	public void applyToTest(Solution best){
-		for(){
-			// TODO: uhefiuehiuehiuhes
+		Double totalFitness = 0.0;
+		
+		for(int i = 0; i<testSet.size();i++){
+			Double fitness = 0.0;
+			//System.out.println("Data row "+i+" : ");
+			//apply function to row
+			ArrayList<String> expression = applyDataToFunction(testSet.get(i),best);
+			String expressionStr = listToString(expression);
+			//System.out.println(expressionStr);
+			Double expected = testSet.get(i).getExpected();
+			Double evaluated = evaluator.evaluate(expressionStr);
+			fitness = evaluated - expected;
+			//System.out.println(" : Fitness: " + fitness);
+			
+			//show fitness for that row
+			totalFitness += Math.abs(fitness);
+			//add up average fitess
 		}
+		Double averageFitness = totalFitness/testSet.size();
+		System.out.println(totalFitness);
+		System.out.println(testSet.size());
+		System.out.println("Average: "+averageFitness);
 	}
 	
 	public boolean bestIsSame(Solution one, Solution two){
@@ -188,11 +204,12 @@ public class Engine {
 			while(scanner.hasNextLine()){
 	        	String line = scanner.nextLine();
 	        	String[] lineSplit = line.split(",");
+	        	//System.out.println(Arrays.toString(lineSplit));
 	        	dataTable.add(new Row(lineSplit));  	
 		}
 		} catch(FileNotFoundException e){
 		}		
-		
+		//System.out.println(dataTable.toString());
 		return dataTable;
 	}
 	
@@ -213,24 +230,29 @@ public class Engine {
 	 * @param solutions
 	 */
 	public void evaluate(ArrayList<Solution> solutions){
-
-				for(int i = 0; i<solutions.size(); i++){
-					Double distanceAway = 0.0;
-					for(int j = 0; j<dataSet.size(); j++){
-						Double evaluated = evaluator.evaluate(listToString(
-								applyDataToFunction(
-								dataSet.get(j),solutions.get(i))));
-						Double expected = dataSet.get(j).getExpected();
-						Double extra = expected - evaluated;
-						distanceAway += extra;
-						//System.out.println(expected+" :: "+evaluated+" :: " +extra+" :: "+listToString(applyDataToFunction(testSet.get(j),functions.get(i))));
-						}
-					
-					distanceAway = distanceAway/testSet.size();
-					solutions.get(i).setEvaluation(distanceAway);
-					//System.out.println(solutions.get(i).getSolution().toString() + " :: " + solutions.get(i).getEvaluation());
-				}
+		for(int j = 0; j<solutions.size(); j++){
+			Double totalFitness = 0.0;
+			for(int i = 0; i<dataSet.size();i++){
+				Double fitness = 0.0;
+				//System.out.println("Data row "+i+" : ");
+				//apply function to row
+				ArrayList<String> expression = applyDataToFunction(dataSet.get(i),solutions.get(j));
+				String expressionStr = listToString(expression);
+				//System.out.println(expressionStr);
+				Double expected = dataSet.get(i).getExpected();
+				Double evaluated = evaluator.evaluate(expressionStr);
+				fitness = evaluated - expected;
+				//System.out.println(" : Fitness: " + fitness);
+				
+				//show fitness for that row
+				totalFitness += Math.abs(fitness);
+				//add up average fitess
+			}
+			Double averageFitness = totalFitness/dataSet.size();
+			solutions.get(j).setEvaluation(averageFitness);
 	}
+}
+	
 	
 	/**
 	 * 
