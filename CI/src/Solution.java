@@ -2,13 +2,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Random;
 
-public class Solution implements Cloneable {
-	final String[] ACCEPTABLE = {"+","-","*","%","/","^"};
+public class Solution implements Cloneable, Comparable<Solution> {
+	final String[] ACCEPTABLE = {"+","-","*","%"};
 	private ArrayList<String> solution = new ArrayList<String>();
 	private Double evaluation;
 	private ArrayList<Integer> mutateShuffle = new ArrayList<Integer>();
 	private int columns;
-	private int seed = Engine.SEED;
+
 	Random ran = new Random();
 	
 	public Solution(int columns){
@@ -23,6 +23,13 @@ public class Solution implements Cloneable {
 	
 	public Solution(ArrayList<String> premade){
 		solution = premade;
+	}
+	
+	public int compareTo(Solution otherSol){
+		Double fitness = Math.abs(evaluation);
+		Double otherFitness = Math.abs(otherSol.getEvaluation());
+		
+		return fitness.compareTo(otherFitness);
 	}
 	
 	public void changeRandomly(int index){
@@ -41,8 +48,8 @@ public class Solution implements Cloneable {
 		return evaluation;
 	}
 	
-	public void setEvaluation(Double e){
-		evaluation = e;
+	public void setEvaluation(Double averageFitness){
+		evaluation = averageFitness;
 	}
 	
 	public String toString(){

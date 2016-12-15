@@ -2,7 +2,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 import java.util.Scanner;
 
@@ -17,9 +19,9 @@ public class Engine {
 	
 	// Parameters for Evolutionary Algorithm
 	private boolean ELITISM = false;
-	private static final int GENERATIONS = 300;//30
-	private static final int POPULATION = 200;
-	private static final int SUB_POPULATION = 50;//30
+	private static final int GENERATIONS = 50;//30
+	private static final int POPULATION = 5000;
+	private static final int SUB_POPULATION = 100;//30
 	private static final int CROSSOVER_METHOD = 2;
 	private static final double MUTATION_PROBABILITY = 0.2;
 	
@@ -32,7 +34,7 @@ public class Engine {
 	private DoubleEvaluator evaluator = new DoubleEvaluator();
 	
 	private Solution overallBest = null;
-	private FunctionRecord bestRecord = null;
+	private SolutionRecord bestRecord = null;
 	
 
 	
@@ -50,19 +52,25 @@ public class Engine {
 			
 			if(overallBest == null || Double.isNaN(overallBest.getEvaluation()) || Math.abs(best.getEvaluation()) < Math.abs(overallBest.getEvaluation())){
 				overallBest = best.clone();
-				bestRecord = new FunctionRecord(overallBest.getSolution(),i,overallBest.getEvaluation());
+				bestRecord = new SolutionRecord(overallBest.getSolution(),i,overallBest.getEvaluation());
 			}
 			
+			
 			ArrayList<Solution> subPop = getSubPopulation(population,SUB_POPULATION);
+			
+			Random r = new Random();
+			int random = r.nextInt(subPop.size());
+			subPop.remove(random);
+			subPop.add(best);
+			
 			ArrayList<Solution> winners = getWinners(subPop);
 			ArrayList<Solution> newPopulation = newPopulation(winners);
 			population = mutatePopulation(newPopulation);
-			//evaluate(mutated,dataSet);
-			//mutated.add(best);
-			//population.clear();
-			//population = (ArrayList<Solution>) mutated.clone();
 			
-			System.out.println("Iteration: " + i + "/" + GENERATIONS + " : OB: "+overallBest.getEvaluation()+ " : IB: "+ best.getEvaluation());	
+			
+			System.out.println("Iteration: " + i + "/" 
+			+ GENERATIONS +" : OB: "+overallBest.getEvaluation()
+			+ " : IB: "+ best.getEvaluation());	
 			
 		}
 				
@@ -70,14 +78,8 @@ public class Engine {
 		System.out.println("------ Applying to TEST set of data ------");
 		applyToTest(overallBest);
 	} 
-	
-	public ArrayList<Solution> roulette(ArrayList<Solution> population, int limit){
-		
-		
-		return null;
-		
-	}
-	
+
+
 	public void applyToTest(Solution best){		
 		ArrayList<Solution> s = new ArrayList();
 		s.add(best.clone());
@@ -219,8 +221,8 @@ public class Engine {
 	 */
 	public ArrayList<Solution> evaluate(ArrayList<Solution> solutions, ArrayList<Row> dataSet){
 		ArrayList<Solution> returnArray = new ArrayList();
+		Double totalFitness = 0.0;
 		for(int j = 0; j<solutions.size(); j++){
-			Double totalFitness = 0.0;
 			for(int i = 0; i<dataSet.size();i++){
 				Double fitness = 0.0;
 
@@ -239,6 +241,7 @@ public class Engine {
 			solutions.get(j).setEvaluation(averageFitness);
 			Solution s = new Solution(solutions.get(j).getSolution());
 			s.setEvaluation(averageFitness);
+			
 			returnArray.add(s);	
 	}
 		return returnArray;

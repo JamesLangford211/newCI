@@ -1,11 +1,11 @@
 import java.util.ArrayList;
 
-public class FunctionRecord {
+public class SolutionRecord {
 	private ArrayList<String> actualFunction;
 	private int foundAt;
 	private double averageFitness;
 	
-	public FunctionRecord(ArrayList<String> actualFunction, int foundAt, double averageFitness){
+	public SolutionRecord(ArrayList<String> actualFunction, int foundAt, double averageFitness){
 		this.actualFunction = actualFunction;
 		this.foundAt = foundAt;
 		this.averageFitness = averageFitness;
